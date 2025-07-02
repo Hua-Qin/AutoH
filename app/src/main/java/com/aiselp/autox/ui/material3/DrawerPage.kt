@@ -3,6 +3,7 @@ package com.aiselp.autox.ui.material3
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.AppOpsManager
+import android.content.Context
 import android.content.Intent
 import android.provider.Settings
 import android.widget.TextView
@@ -64,13 +65,14 @@ import com.aiselp.autox.ui.material3.components.DialogTitle
 import com.aiselp.autox.ui.material3.components.SettingOptionSwitch
 import com.aiselp.autox.ui.material3.components.Watch
 import com.stardust.app.GlobalAppContext
+import com.stardust.app.foreground.AbstractBroadcastService.Companion.ACTION_STOP_ALL_SERVICES
 import com.stardust.app.isOpPermissionGranted
-import com.stardust.app.permission.DrawOverlaysPermission
 import com.stardust.app.permission.DrawOverlaysPermission.launchCanDrawOverlaysSettings
 import com.stardust.app.permission.PermissionsSettingsUtil
 import com.stardust.autojs.IndependentScriptService
 import com.stardust.autojs.core.pref.PrefKey
 import com.stardust.autojs.core.shizuku.ShizukuClient
+import com.stardust.autojs.servicecomponents.EngineController
 import com.stardust.autojs.servicecomponents.ScriptServiceConnection
 import com.stardust.toast
 import com.stardust.util.ClipboardUtil
@@ -205,7 +207,8 @@ private fun AccessibilityServiceSwitch() {
             }
         }
     )
-    dialog.BaseDialog(onDismissRequest = { scope.launch { dialog.dismiss() } },
+    dialog.BaseDialog(
+        onDismissRequest = { scope.launch { dialog.dismiss() } },
         title = { DialogTitle(title = stringResource(R.string.text_need_to_enable_accessibility_service)) },
         positiveText = stringResource(id = R.string.text_go_to_open),
         onPositiveClick = {
@@ -336,13 +339,12 @@ private fun NotificationUsageRightSwitch() {
 private fun ForegroundServiceSwitch() {
     val context = LocalContext.current
     val isOpenForegroundServices = remember {
-        val default = com.stardust.autojs.core.pref.Pref.getDefault(context)
-            .getBoolean(PrefKey.KEY_FOREGROUND_SERVIE, false)
+        val default = Pref.isForegroundServiceEnabled()
         mutableStateOf(default)
     }
     Watch(isOpenForegroundServices) {
         Pref.def().edit(true) {
-            putBoolean(PrefKey.KEY_FOREGROUND_SERVIE, isOpenForegroundServices.value)
+            putBoolean(PrefKey.KEY_FOREGROUND_SERVICE, isOpenForegroundServices.value)
         }
         if (isOpenForegroundServices.value) {
             IndependentScriptService.startForeground(context)
@@ -400,8 +402,7 @@ private fun FloatingWindowSwitch() {
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult(),
         onResult = {
-            if (DrawOverlaysPermission.isCanDrawOverlays(context)) {
-                FloatyWindowManger.showCircularMenu()
+            if (FloatyWindowManger.showCircularMenu()) {
                 isFloatingWindowShowing = true
             } else isFloatingWindowShowing = false
         }
@@ -418,8 +419,7 @@ private fun FloatingWindowSwitch() {
                 isFloatingWindowShowing = false
                 Pref.setFloatingMenuShown(false)
             } else {
-                if (DrawOverlaysPermission.isCanDrawOverlays(context)) {
-                    FloatyWindowManger.showCircularMenu()
+                if (FloatyWindowManger.showCircularMenu()) {
                     isFloatingWindowShowing = true
                     Pref.setFloatingMenuShown(true)
                 } else launcher.launchCanDrawOverlaysSettings(context.packageName)
@@ -481,7 +481,6 @@ private fun AutoBackupSwitch() {
     )
 }
 
-@OptIn(DelicateCoroutinesApi::class)
 @Composable
 private fun ConnectComputerSwitch() {
     val context = LocalContext.current
@@ -493,10 +492,11 @@ private fun ConnectComputerSwitch() {
         rememberLauncherForActivityResult(contract = ScanQRCode(), onResult = { result ->
             when (result) {
                 is QRResult.QRSuccess -> {
-                    val url = result.content.rawValue
+                    toast(context, result.content.rawValue)
+                    val url = result.content.rawValue!!
                     if (url.matches(Regex("^(ws://|wss://).+$"))) {
                         Pref.saveServerAddress(url)
-                        GlobalScope.launch { DevPlugin.connect(url) }
+                        connectServer(url)
                     } else {
                         Toast.makeText(
                             context,
@@ -508,16 +508,19 @@ private fun ConnectComputerSwitch() {
 
                 QRResult.QRUserCanceled -> {}
                 QRResult.QRMissingPermission -> {}
-                is QRResult.QRError -> {}
+                is QRResult.QRError -> {
+                    Toast.makeText(
+                        context,
+                        result.exception.toString(),
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
             }
         })
-    val dialog = object : DialogController() {
-        override fun onNeutralClick() {
-            showState = false
-            scanCodeLauncher.launch(null)
-        }
-    }
-    dialog.ConnectComputerDialog()
+    val dialog = object : DialogController() {}
+    dialog.ConnectComputerDialog(
+        onScanCode = { scanCodeLauncher.launch(null) }
+    )
     LaunchedEffect(Unit) {
         DevPlugin.connectState.collect {
             withContext(Dispatchers.Main) {
@@ -549,7 +552,9 @@ private fun ConnectComputerSwitch() {
 }
 
 @Composable
-private fun DialogController.ConnectComputerDialog() {
+private fun DialogController.ConnectComputerDialog(
+    onScanCode: () -> Unit
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var host by remember {
@@ -572,6 +577,10 @@ private fun DialogController.ConnectComputerDialog() {
             IntentUtil.browse(context, URL_DEV_PLUGIN)
         },
         neutralText = stringResource(id = R.string.text_scan_qr),
+        onNeutralClick = {
+            scope.launch { dismiss() }
+            onScanCode()
+        }
     ) {
         TextField(value = host, onValueChange = { host = it })
     }
@@ -788,6 +797,7 @@ private fun AppDetailsSettings() {
 @Composable
 private fun BottomButtons() {
     val context = LocalContext.current
+    var lastBackPressedTime = remember { 0L }
     Row(modifier = Modifier.fillMaxWidth()) {
         TextButton(
             modifier = Modifier.weight(1f),
@@ -805,16 +815,33 @@ private fun BottomButtons() {
             Text(text = stringResource(id = R.string.text_setting))
         }
         TextButton(
-            modifier = Modifier.weight(1f), onClick = {
-                context as Activity
-                context.finish()
-            }
+            modifier = Modifier.weight(1f),
+            onClick = {
+                val currentTime = System.currentTimeMillis()
+                val interval = currentTime - lastBackPressedTime
+                if (interval > 2000) {
+                    lastBackPressedTime = currentTime
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.text_press_again_to_exit),
+                        Toast.LENGTH_SHORT
+                    ).show()
+                } else exitCompletely(context)
+            },
         ) {
             Icon(imageVector = Icons.AutoMirrored.Filled.ExitToApp, contentDescription = null)
             Spacer(modifier = Modifier.width(8.dp))
             Text(text = stringResource(id = R.string.text_exit))
         }
     }
+}
+
+fun exitCompletely(context: Context) {
+    EngineController.stopAllScript()
+    if (context is Activity) context.finish()
+
+    // 发送广播触发所有服务停止
+    context.sendBroadcast(Intent(ACTION_STOP_ALL_SERVICES))
 }
 
 @OptIn(DelicateCoroutinesApi::class)

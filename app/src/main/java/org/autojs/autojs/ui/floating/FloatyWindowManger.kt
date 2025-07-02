@@ -5,6 +5,7 @@ import android.content.Intent
 import android.view.WindowManager
 import com.stardust.app.GlobalAppContext
 import com.stardust.app.GlobalAppContext.toast
+import com.stardust.app.permission.DrawOverlaysPermission
 import com.stardust.autojs.util.FloatingPermission
 import com.stardust.enhancedfloaty.FloatyWindow
 import org.autojs.autoxjs.R
@@ -35,6 +36,9 @@ object FloatyWindowManger {
 
     fun showCircularMenu(): Boolean {
         val context = GlobalAppContext.get()
+        if (!DrawOverlaysPermission.isCanDrawOverlays(context)) {
+            return false
+        }
         context.startService(Intent(context, FloatyService::class.java).apply {
             action = FloatyService.SHOW_CIRCULAR_MENU
         })

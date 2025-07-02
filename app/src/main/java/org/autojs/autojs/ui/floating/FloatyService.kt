@@ -1,11 +1,11 @@
 package org.autojs.autojs.ui.floating
 
-import android.app.Service
 import android.content.Intent
 import android.os.IBinder
+import com.stardust.app.foreground.AbstractBroadcastService
 import com.stardust.enhancedfloaty.FloatyService
 
-class FloatyService : Service() {
+class FloatyService : AbstractBroadcastService() {
     private var circularMenu: CircularMenu? = null
     override fun onCreate() {
         super.onCreate()
@@ -15,7 +15,9 @@ class FloatyService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val action = intent?.action
         if (action == SHOW_CIRCULAR_MENU) {
-            circularMenu = CircularMenu(this)
+            if (circularMenu == null) {
+                circularMenu = CircularMenu(this)
+            }
         } else if (action == HIED_CIRCULAR_MENU) {
             circularMenu?.close()
             circularMenu = null
@@ -25,6 +27,12 @@ class FloatyService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? {
         return null
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        circularMenu?.close()
+        circularMenu = null
     }
 
     companion object {
