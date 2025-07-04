@@ -377,7 +377,7 @@ private fun UsageStatsPermissionSwitch() {
         icon = Icons.Default.Settings,
         title = stringResource(id = R.string.text_usage_stats_permission),
         checked = enabled,
-        onCheckedChange = { scope.launch { if (it) dialog.show() } },
+        onCheckedChange = { scope.launch { dialog.show() } },
         tint = Color(0xFF96142F)
     )
     dialog.AlertDialog(
