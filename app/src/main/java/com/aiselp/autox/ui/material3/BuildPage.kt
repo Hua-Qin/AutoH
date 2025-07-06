@@ -1,7 +1,6 @@
 package com.aiselp.autox.ui.material3
 
 import android.app.Activity
-import android.content.Context
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.Image
@@ -55,6 +54,8 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
 import com.aiselp.autox.apkbuilder.ApkKeyStore
+import com.aiselp.autox.build.BuildApkAssetDialog
+import com.aiselp.autox.ui.material3.components.AlertDialog
 import com.aiselp.autox.ui.material3.components.BaseDialog
 import com.aiselp.autox.ui.material3.components.BuildCard
 import com.aiselp.autox.ui.material3.components.CheckboxOption
@@ -62,7 +63,6 @@ import com.aiselp.autox.ui.material3.components.DialogController
 import com.aiselp.autox.ui.material3.components.DialogTitle
 import com.aiselp.autox.ui.material3.components.InputBox
 import com.aiselp.autox.ui.material3.components.M3TopAppBar
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.stardust.util.IntentUtil
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -87,6 +87,7 @@ fun BuildPage(viewModel: BuildViewModel) {
         }
     }
 
+    remember { BuildApkAssetDialog() }.Dialog()
 
     BackHandler { finishDialog.exitCheck() }
     Scaffold(topBar = {
@@ -121,12 +122,23 @@ fun RowScope.Actions(model: BuildViewModel) {
     val scope = rememberCoroutineScope()
     var saveing by remember { mutableStateOf(false) }
     var finished by remember { mutableStateOf(false) }
-    val context = LocalContext.current
+    val dialogController = DialogController()
+
+    dialogController.AlertDialog(
+        title = stringResource(R.string.text_alert),
+        positiveText = stringResource(R.string.text_save),
+        onPositiveClick = { model.saveConfig(); dialogController.dismiss() },
+        negativeText = stringResource(R.string.text_cancel),
+        onNegativeClick = { dialogController.dismiss() },
+        neutralText = stringResource(R.string.text_save_as_project),
+        onNeutralClick = { model.saveAsProject();dialogController.dismiss() },
+        content = stringResource(R.string.text_select_save_mode),
+    )
     IconButton(
         enabled = !saveing and !finished,
         onClick = {
             if (model.isSingleFile) {
-                showSaveDialog(context, model)
+                dialogController.show()
                 return@IconButton
             }
             scope.launch {
@@ -589,22 +601,4 @@ private fun DialogController.FinishDialog(model: BuildViewModel) {
     ) {
         Text(text = stringResource(R.string.edit_exit_without_save_warn))
     }
-}
-
-fun showSaveDialog(context: Context, model: BuildViewModel) {
-    val list = arrayOf(
-        context.getString(R.string.text_save),
-        context.getString(R.string.text_save_as_project),
-        context.getString(R.string.cancel)
-    )
-    MaterialAlertDialogBuilder(context)
-        .setTitle(R.string.text_select_save_mode)
-        .setItems(list) { dialog, which ->
-            when (which) {
-                0 -> model.saveConfig()
-                1 -> model.saveAsProject()
-                else -> {}
-            }
-            dialog.dismiss()
-        }.show()
 }

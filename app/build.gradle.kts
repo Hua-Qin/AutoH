@@ -101,14 +101,34 @@ android {
             buildConfigField("String", "CHANNEL", "\"v7\"")
             manifestPlaceholders.putAll(mapOf("appName" to "Autox.js v7"))
         }
+        create("v7_mini") {
+            applicationIdSuffix = ".v7"
+            buildConfigField("String", "CHANNEL", "\"v7\"")
+            manifestPlaceholders.putAll(mapOf("appName" to "Autox.js v7"))
+        }
     }
-
+    applicationVariants.all {
+        val variant = this
+        if (variant.flavorName == "v7_mini") {
+            mergeAssetsProvider.configure {
+                doLast {
+                    delete(
+                        fileTree(outputDir) {
+                            include(
+                                "codeeditor",
+                                "template.apk"
+                            )
+                        }
+                    )
+                }
+            }
+        }
+    }
     sourceSets {
         getByName("main") {
             res.srcDirs("src/main/res", "src/main/res-i18n")
         }
     }
-
     configurations.all {
         resolutionStrategy.force("com.google.code.findbugs:jsr305:3.0.1")
         exclude(group = "org.jetbrains", module = "annotations-java5")
@@ -261,7 +281,6 @@ tasks.named("clean").configure {
         delete(File(assetsDir, "template.apk"))
     }
 }
-
 tasks.register("buildDocs") {
     doLast {
         val v2DocDir = File(rootProject.projectDir, "docs/v2")
@@ -284,8 +303,8 @@ tasks.register("buildDocs") {
         }
         copy {
             from(File(jsApiDir, "docs"))
-            delete(File(v2DocDir,"docs/nodejs/modules"))
-            into(File(v2DocDir,"docs/nodejs/modules"))
+            delete(File(v2DocDir, "docs/nodejs/modules"))
+            into(File(v2DocDir, "docs/nodejs/modules"))
         }
         exec {
             workingDir(v2DocDir)
@@ -299,7 +318,7 @@ tasks.register("buildDocs") {
             commandLine("node", buildFile.path)
         }
         copy {
-            from(File(v2DocDir,"build"))
+            from(File(v2DocDir, "build"))
             into(File(projectDir, "src/main/assets/docs/v2"))
         }
         buildFile.delete()
