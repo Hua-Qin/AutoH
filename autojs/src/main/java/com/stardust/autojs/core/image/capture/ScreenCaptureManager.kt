@@ -18,14 +18,16 @@ class ScreenCaptureManager : ScreenCaptureRequester {
     private var mediaProjection: MediaProjection? = null
 
     override suspend fun requestScreenCapture(context: Context, orientation: Int) {
-        if (!IndependentScriptService.isRunning) {
-            throw ScriptEnvironmentException("前台服务未启用")
-        }
-
         if (screenCapture?.available == true) {
             screenCapture?.setOrientation(orientation, context)
             return
         }
+
+        if (!IndependentScriptService.isRunning) {
+            throw ScriptEnvironmentException("前台服务未启用")
+        }
+
+        IndependentScriptService.startForeground(context, true)
         val result = if (context is OnActivityResultDelegate.DelegateHost && context is Activity) {
             ScreenCaptureRequester.ActivityScreenCaptureRequester(
                 context.onActivityResultDelegateMediator, context

@@ -28,7 +28,7 @@ class IndependentScriptService : AbstractBroadcastService() {
         Log.i(TAG, "onCreate")
         Log.i(TAG, "Pid: ${Process.myPid()}")
         if (Pref.isForegroundServiceEnabled) {
-            startForeground()
+            startForeground(false)
         }
     }
 
@@ -36,11 +36,16 @@ class IndependentScriptService : AbstractBroadcastService() {
         super.onLowMemory()
     }
 
-    private fun startForeground() {
+    private fun startForeground(mediaProjection: Boolean) {
         ServiceCompat.startForeground(
             this, 25, buildNotification(),
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK or ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
+                val serviceType = ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
+                if (mediaProjection) {
+                    serviceType or ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
+                } else {
+                    serviceType
+                }
             } else {
                 0
             },
@@ -78,10 +83,13 @@ class IndependentScriptService : AbstractBroadcastService() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val action = intent?.action
         when (action) {
-            ACTION_START_FOREGROUND -> startForeground()
+            ACTION_START_FOREGROUND -> {
+                startForeground(intent.getBooleanExtra(PROJECTION_KEY, false))
+            }
 
             ACTION_STOP_FOREGROUND -> {
                 ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
+                mediaProjection?.stop()
                 isRunning = false
             }
         }
@@ -112,14 +120,20 @@ class IndependentScriptService : AbstractBroadcastService() {
         var mediaProjection: MediaProjection? = null
         var isRunning: Boolean = false
         private const val TAG = "ScriptService"
+        private const val PROJECTION_KEY = "mediaProjection"
         private val CHANEL_ID = IndependentScriptService::class.java.name + "_foreground"
         const val ACTION_START_FOREGROUND = "action_start_foreground"
         const val ACTION_STOP_FOREGROUND = "action_stop_foreground"
 
-        fun startForeground(context: Context) {
+        fun startForeground(context: Context, mediaProjection: Boolean) {
             val intent = Intent(context, IndependentScriptService::class.java)
             intent.action = ACTION_START_FOREGROUND
+            intent.putExtra(PROJECTION_KEY, mediaProjection)
             context.startForegroundService(intent)
+        }
+
+        fun startForeground(context: Context) {
+            startForeground(context, false)
         }
 
         fun stopForeground(context: Context) {
