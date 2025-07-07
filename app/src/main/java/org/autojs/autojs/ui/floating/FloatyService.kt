@@ -22,17 +22,21 @@ class FloatyService : AbstractBroadcastService() {
             circularMenu?.close()
             circularMenu = null
         }
-        return START_STICKY
+        return super.onStartCommand(intent, flags, startId)
     }
 
     override fun onBind(intent: Intent?): IBinder? {
         return null
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
+    override fun releaseResources() {
         circularMenu?.close()
         circularMenu = null
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        releaseResources()
     }
 
     companion object {

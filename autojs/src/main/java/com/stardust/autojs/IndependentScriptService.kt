@@ -7,7 +7,6 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
-import android.media.projection.MediaProjection
 import android.os.Build
 import android.os.IBinder
 import android.os.Process
@@ -23,12 +22,13 @@ import kotlinx.coroutines.cancel
 
 class IndependentScriptService : AbstractBroadcastService() {
     val scope: CoroutineScope = CoroutineScope(Dispatchers.Default)
+
     override fun onCreate() {
         super.onCreate()
         Log.i(TAG, "onCreate")
         Log.i(TAG, "Pid: ${Process.myPid()}")
         if (Pref.isForegroundServiceEnabled) {
-            startForeground(false)
+            startForeground()
         }
     }
 
@@ -36,21 +36,17 @@ class IndependentScriptService : AbstractBroadcastService() {
         super.onLowMemory()
     }
 
-    private fun startForeground(mediaProjection: Boolean) {
+    private fun startForeground() {
         ServiceCompat.startForeground(
-            this, 25, buildNotification(),
+            this,
+            NOTIFICATION_ID,
+            buildNotification(),
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                val serviceType = ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
-                if (mediaProjection) {
-                    serviceType or ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
-                } else {
-                    serviceType
-                }
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
             } else {
                 0
-            },
+            }
         )
-        isRunning = true
     }
 
     private fun buildNotification(): Notification {
@@ -64,7 +60,7 @@ class IndependentScriptService : AbstractBroadcastService() {
         channel.enableLights(false)
         manager.createNotificationChannel(channel)
 
-        // 设置必要的 Flags
+        // 设置启动意图
         val launchIntent = packageManager.getLaunchIntentForPackage(packageName)?.apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED
         }
@@ -72,35 +68,38 @@ class IndependentScriptService : AbstractBroadcastService() {
             this, 0, launchIntent,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
-        return NotificationCompat.Builder(this, CHANEL_ID)
+
+        val builder = NotificationCompat.Builder(this, CHANEL_ID)
             .setContentTitle(getString(R.string.foreground_notification_title))
             .setContentText(getString(R.string.foreground_notification_text))
-            .setSmallIcon(R.drawable.autojs_logo).setWhen(System.currentTimeMillis())
-            .setContentIntent(contentIntent).setChannelId(CHANEL_ID).setVibrate(LongArray(0))
-            .setOngoing(true).build()
+            .setSmallIcon(R.drawable.autojs_logo)
+            .setWhen(System.currentTimeMillis())
+            .setContentIntent(contentIntent)
+            .setChannelId(CHANEL_ID)
+            .setVibrate(LongArray(0))
+            .setOngoing(true)
+
+        return builder.build()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val action = intent?.action
         when (action) {
-            ACTION_START_FOREGROUND -> {
-                startForeground(intent.getBooleanExtra(PROJECTION_KEY, false))
-            }
-
-            ACTION_STOP_FOREGROUND -> {
-                ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
-                mediaProjection?.stop()
-                isRunning = false
-            }
+            ACTION_START_FOREGROUND -> startForeground()
+            ACTION_STOP_FOREGROUND -> stopServiceInternal()
         }
-        return START_STICKY
+        return super.onStartCommand(intent, flags, startId)
+    }
+
+    override fun releaseResources() {
+        Log.d(TAG, "Releasing service resources")
+        scope.cancel()
     }
 
     override fun onDestroy() {
+        releaseResources()
         super.onDestroy()
-        scope.cancel()
-        mediaProjection?.stop()
-        isRunning = false
+        Log.i(TAG, "Service destroyed")
     }
 
     override fun onUnbind(intent: Intent?): Boolean {
@@ -115,30 +114,25 @@ class IndependentScriptService : AbstractBroadcastService() {
         return ScriptBinder(this, scope)
     }
 
-
     companion object {
-        var mediaProjection: MediaProjection? = null
-        var isRunning: Boolean = false
         private const val TAG = "ScriptService"
-        private const val PROJECTION_KEY = "mediaProjection"
+        private const val NOTIFICATION_ID = 25
+
         private val CHANEL_ID = IndependentScriptService::class.java.name + "_foreground"
         const val ACTION_START_FOREGROUND = "action_start_foreground"
         const val ACTION_STOP_FOREGROUND = "action_stop_foreground"
 
-        fun startForeground(context: Context, mediaProjection: Boolean) {
-            val intent = Intent(context, IndependentScriptService::class.java)
-            intent.action = ACTION_START_FOREGROUND
-            intent.putExtra(PROJECTION_KEY, mediaProjection)
+        fun startForeground(context: Context) {
+            val intent = Intent(context, IndependentScriptService::class.java).apply {
+                action = ACTION_START_FOREGROUND
+            }
             context.startForegroundService(intent)
         }
 
-        fun startForeground(context: Context) {
-            startForeground(context, false)
-        }
-
         fun stopForeground(context: Context) {
-            val intent = Intent(context, IndependentScriptService::class.java)
-            intent.action = ACTION_STOP_FOREGROUND
+            val intent = Intent(context, IndependentScriptService::class.java).apply {
+                action = ACTION_STOP_FOREGROUND
+            }
             context.startService(intent)
         }
     }

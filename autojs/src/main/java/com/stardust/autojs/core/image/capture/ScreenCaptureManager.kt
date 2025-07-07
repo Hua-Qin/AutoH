@@ -1,15 +1,15 @@
 package com.stardust.autojs.core.image.capture
 
 import android.app.Activity
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.ServiceConnection
 import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
+import android.os.IBinder
 import com.stardust.app.OnActivityResultDelegate
-import com.stardust.autojs.IndependentScriptService
-import com.stardust.autojs.runtime.exception.ScriptEnvironmentException
 import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.coroutineScope
 import java.util.concurrent.CancellationException
 
 class ScreenCaptureManager : ScreenCaptureRequester {
@@ -23,32 +23,51 @@ class ScreenCaptureManager : ScreenCaptureRequester {
             return
         }
 
-        if (!IndependentScriptService.isRunning) {
-            throw ScriptEnvironmentException("前台服务未启用")
-        }
-
-        IndependentScriptService.startForeground(context, true)
         val result = if (context is OnActivityResultDelegate.DelegateHost && context is Activity) {
             ScreenCaptureRequester.ActivityScreenCaptureRequester(
                 context.onActivityResultDelegateMediator, context
             ).request()
         } else {
-            coroutineScope {
-                val result = CompletableDeferred<Intent>()
-                ScreenCaptureRequestActivity.request(context) { data ->
-                    if (data != null) {
-                        result.complete(data)
-                    } else result.cancel(CancellationException("data is null"))
+            val result = CompletableDeferred<Intent>()
+            ScreenCaptureRequestActivity.request(context) { data ->
+                if (data != null) {
+                    result.complete(data)
+                } else result.cancel(CancellationException("data is null"))
+            }
+            result.await()
+        }
+
+        // 使用服务绑定确保服务就绪
+        val serviceConnected = CompletableDeferred<Unit>()
+        val connection = object : ServiceConnection {
+            override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+                try {
+                    // 服务已连接，安全获取mediaProjection
+                    mediaProjection =
+                        (context.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager)
+                            .getMediaProjection(Activity.RESULT_OK, result)
+                    CaptureForegroundService.setMediaProjection(context, mediaProjection!!)
+                    screenCapture = ScreenCapturer(mediaProjection!!, orientation)
+                } finally {
+                    serviceConnected.complete(Unit)
+                    context.unbindService(this)
                 }
-                result.await()
+            }
+
+            override fun onServiceDisconnected(name: ComponentName?) {
+                // 服务意外断开时处理
+                serviceConnected.completeExceptionally(IllegalStateException("Service disconnected unexpectedly"))
             }
         }
 
-        mediaProjection =
-            (context.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager)
-                .getMediaProjection(Activity.RESULT_OK, result)
-        IndependentScriptService.mediaProjection = mediaProjection
-        screenCapture = ScreenCapturer(mediaProjection!!, orientation)
+        // 绑定服务并等待连接
+        context.startService(Intent(context, CaptureForegroundService::class.java))
+        context.bindService(
+            Intent(context, CaptureForegroundService::class.java),
+            connection,
+            Context.BIND_AUTO_CREATE
+        )
+        serviceConnected.await()
     }
 
     override fun recycle() {
