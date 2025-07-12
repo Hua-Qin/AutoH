@@ -115,7 +115,7 @@ android {
                     delete(
                         fileTree(outputDir) {
                             include(
-                                "codeeditor",
+                                "codeeditor/**/*",
                                 "template.apk"
                             )
                         }
@@ -160,6 +160,7 @@ dependencies {
     implementation(libs.compose.ui)
     implementation(libs.compose.material)
     implementation(libs.compose.ui.tooling.preview)
+    implementation(libs.mlkit.common)
     androidTestImplementation(libs.compose.ui.test.junit4)
     debugImplementation(libs.compose.ui.tooling)
     implementation(libs.activity.compose)
@@ -236,7 +237,7 @@ dependencies {
 
     implementation(libs.bundles.ktor)
     //qr scan
-    implementation("io.github.g00fy2.quickie:quickie-bundled:1.5.0")
+    implementation(libs.quickie.bundled)
     //Fab button with menu, please do not upgrade, download dependencies will be error after upgrade
     //noinspection GradleDependency
     implementation("com.leinardi.android:speed-dial.compose:1.0.0-alpha03")
