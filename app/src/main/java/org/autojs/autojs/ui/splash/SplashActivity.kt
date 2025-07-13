@@ -34,6 +34,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.lifecycleScope
 import coil.compose.rememberAsyncImagePainter
 import com.aiselp.autox.ui.material3.theme.AppTheme
+import com.stardust.autojs.servicecomponents.ScriptServiceConnection
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.autojs.autojs.ui.main.MainActivity
@@ -53,6 +54,8 @@ class SplashActivity : AppCompatActivity() {
                     WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
             }
         }
+
+        ScriptServiceConnection.GlobalConnection.bind(application)
 
         WindowCompat.setDecorFitsSystemWindows(window, false)
         val controller = WindowCompat.getInsetsController(window, window.decorView)

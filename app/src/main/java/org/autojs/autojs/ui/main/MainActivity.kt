@@ -35,7 +35,6 @@ import com.aiselp.autox.ui.material3.DrawerPage
 import com.aiselp.autox.ui.material3.MainTopAppBar
 import com.aiselp.autox.ui.material3.theme.AppTheme
 import com.stardust.autojs.IndependentScriptService
-import com.stardust.autojs.servicecomponents.ScriptServiceConnection
 import com.stardust.autojs.util.PermissionUtil
 import com.stardust.autojs.util.StoragePermissionResultContract
 import com.stardust.toast
@@ -79,8 +78,6 @@ class MainActivity : FragmentActivity() {
         } else {
             FloatyWindowManger.hideCircularMenu()
         }
-
-        ScriptServiceConnection.GlobalConnection.bind(this)
 
         setContent {
             val scope = rememberCoroutineScope()

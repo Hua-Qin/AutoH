@@ -8,20 +8,36 @@ import android.os.Binder
 import android.os.Bundle
 import android.os.IBinder
 import android.util.Log
+import com.stardust.app.GlobalAppContext
 import com.stardust.autojs.IndependentScriptService
+import com.stardust.autojs.core.console.ConsoleImpl
+import com.stardust.autojs.core.console.LogEntry
 import com.stardust.autojs.execution.ExecutionConfig
+import com.stardust.util.UiHandler
+import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
+import kotlinx.coroutines.CompletableJob
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
 
 class ScriptServiceConnection : ServiceConnection {
     val binderConsoleListener = BinderConsoleListener.ClientInterface()
-    var reBind: (() -> Unit)? = null
-     var service: IBinder? = null
+    var binding: CompletableJob? = null
+    var service: IBinder? = null
+    var application: Context? = null
     private val connected = Job()
+    val consoleImpl: ConsoleImpl =
+        object : ConsoleImpl(UiHandler(GlobalAppContext.get())), BinderConsoleListener {
+            override fun onPrintln(log: LogEntry) {
+                println(log.level, log.content)
+            }
+        }.apply {
+            binderConsoleListener.logPublish
+                .observeOn(AndroidSchedulers.mainThread()).subscribe(::onPrintln)
+        }
+
 
     @Volatile
     var isConnected = false
@@ -31,7 +47,9 @@ class ScriptServiceConnection : ServiceConnection {
     override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
         this.service = service
         isConnected = true
+        binding?.complete()
         connected.complete()
+        binderConsoleListener.logPublish.onNext(LogEntry(level = Log.INFO, content = "Script service connected"))
         GlobalScope.launch {
             registerGlobalConsoleListener(binderConsoleListener)
         }
@@ -39,6 +57,8 @@ class ScriptServiceConnection : ServiceConnection {
 
     override fun onServiceDisconnected(name: ComponentName?) {
         isConnected = false
+        binding = null
+        binderConsoleListener.logPublish.onNext(LogEntry(level = Log.ERROR, content = "Script service disconnected"))
     }
 
     private suspend fun <T> sendBinder(n: suspend TanBinder.() -> T): T {
@@ -120,20 +140,25 @@ class ScriptServiceConnection : ServiceConnection {
 
     suspend fun awaitConnected() = withTimeout(3000) {
         if (isConnected) return@withTimeout
-        check(reBind != null) { "service is not connected" }
-        reBind!!.invoke()
-        Log.d("ScriptServiceConnection", "awaitConnected")
-        while (!isConnected) {
-            delay(100)
+        if (binding == null && application != null) {
+            bind(application!!)
+        } else {
+            throw IllegalStateException("ScriptServiceConnection not bind")
         }
+        Log.d("ScriptServiceConnection", "awaitConnected")
+        binding!!.join()
     }
 
-    fun bind(context: Context){
-        reBind = {
-            context.bindService(Intent(context, IndependentScriptService::class.java), this, Context.BIND_AUTO_CREATE)
-        }
+    fun bind(context: Context) {
         if (isConnected) return
-        reBind!!.invoke()
+        application = context.applicationContext
+        context.applicationContext.bindService(
+            Intent(context, IndependentScriptService::class.java),
+            this,
+            Context.BIND_AUTO_CREATE
+        )
+        binding = Job()
+
     }
 
     companion object {
