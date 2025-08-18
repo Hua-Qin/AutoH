@@ -7,6 +7,7 @@ import android.os.Environment
 import android.os.Looper
 import android.view.View
 import android.widget.Toast
+import androidx.activity.ComponentActivity
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -30,6 +31,7 @@ import com.stardust.pio.PFiles.getExtension
 import com.stardust.pio.PFiles.getNameWithoutExtension
 import com.stardust.pio.PFiles.write
 import com.stardust.pio.UncheckedIOException
+import com.stardust.toast
 import io.reactivex.Observable
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.functions.Consumer
@@ -49,7 +51,8 @@ import org.autojs.autojs.model.explorer.Explorers
 import org.autojs.autojs.model.script.ScriptFile
 import org.autojs.autojs.model.script.Scripts.edit
 import org.autojs.autojs.ui.filechooser.FileChooserDialogBuilder
-import org.autojs.autojs.ui.shortcut.ShortcutCreateActivity
+import org.autojs.autojs.ui.shortcut.ShortcutCreate
+import org.autojs.autojs.ui.shortcut.showDialog
 import org.autojs.autojs.ui.timing.TimedTaskSettingActivity
 import org.autojs.autoxjs.R
 import java.io.File
@@ -223,11 +226,13 @@ class ScriptOperations {
         mExplorer.notifyItemChanged(oldItem, newItem)
     }
 
-    fun createShortcut(file: ScriptFile?) {
-        mContext.startActivity(
-            Intent(mContext, ShortcutCreateActivity::class.java)
-                .putExtra(ShortcutCreateActivity.EXTRA_FILE, file)
-        )
+    fun createShortcut(file: ScriptFile) {
+        val activity = mContext.run { this as? ComponentActivity }
+        if (activity == null) {
+            toast(mContext, "当前无法创建")
+            return
+        }
+        ShortcutCreate.showDialog(activity, file)
     }
 
     fun delete(scriptFile: ScriptFile, onDelete: () -> Unit = {}) {
