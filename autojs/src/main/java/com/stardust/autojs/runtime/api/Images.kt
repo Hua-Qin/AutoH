@@ -11,6 +11,7 @@ import android.os.Looper
 import android.util.Base64
 import android.util.Log
 import android.view.Gravity
+import androidx.core.graphics.createBitmap
 import com.stardust.autojs.annotation.ScriptVariable
 import com.stardust.autojs.core.image.ColorFinder
 import com.stardust.autojs.core.image.ImageWrapper
@@ -341,10 +342,10 @@ class Images(
             width = img1.width + img2.width
             height = Math.max(img1.height, img2.height)
         } else {
-            width = Math.max(img1.width, img2.height)
+            width = Math.max(img1.width, img2.width)
             height = img1.height + img2.height
         }
-        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val bitmap = createBitmap(width, height)
         val canvas = Canvas(bitmap)
         val paint = Paint()
         if (direction == Gravity.LEFT || direction == Gravity.RIGHT) {
