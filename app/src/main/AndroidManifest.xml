@@ -227,6 +227,7 @@
 
         <receiver
             android:name="org.autojs.autojs.external.receiver.StaticBroadcastReceiver"
+            android:process="@string/text_script_process_name"
             android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />

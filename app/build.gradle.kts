@@ -30,7 +30,7 @@ android {
         buildConfigField("boolean", "isMarket", "false")
 
         resourceConfigurations.addAll(
-            listOf("zh", "en", "es", "ar", "ja", "zh_TW", "fr", "de", "it", "ko", "ru", "tr", "lt")
+            listOf("zh-rCN", "en", "es", "ar", "ja", "zh_TW", "fr", "de", "it", "ko", "ru", "tr", "lt")
         )
     }
     buildFeatures {

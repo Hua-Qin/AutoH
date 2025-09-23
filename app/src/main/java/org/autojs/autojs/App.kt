@@ -2,10 +2,8 @@ package org.autojs.autojs
 
 import android.annotation.SuppressLint
 import android.app.Application
-import android.app.LocaleManager
 import android.content.Intent
 import android.os.Build
-import android.os.LocaleList
 import android.os.Process
 import android.util.Log
 import android.webkit.WebView
@@ -97,10 +95,7 @@ class App : Application(), Configuration.Provider {
     private fun initLanguage() {
         fun changeLanguage(language: String?) {
             if (language == null) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    getSystemService(LocaleManager::class.java)
-                        .applicationLocales = LocaleList.getEmptyLocaleList()
-                } else AppCompatDelegate.setApplicationLocales(LocaleListCompat.getEmptyLocaleList())
+                AppCompatDelegate.setApplicationLocales(LocaleListCompat.getDefault())
             } else
                 AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(language))
         }
