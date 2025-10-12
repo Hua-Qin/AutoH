@@ -74,6 +74,7 @@ public class XmlConverter {
                     .map("scroll", ScrollView.class.getName())
                     .map("toolbar", JsToolbar.class.getName())
                     .map("canvas", ScriptCanvasView.class.getName())
+                    .map("texture", ScriptCanvasView.class.getName())
                     .map("list", JsListView.class.getName())
                     .map("grid", JsGridView.class.getName())
                     .map("drawer", DrawerLayout.class.getName())

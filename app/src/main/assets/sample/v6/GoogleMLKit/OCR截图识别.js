@@ -80,6 +80,9 @@ clickButtonWindow.captureAndOcr.click(function () {
   setTimeout(() => {
     threads.start(()=>{
       captureAndOcr()
+      if (window.canvas.updateCanvas){
+          window.canvas.updateCanvas()
+      }
       ui.run(function () {
         clickButtonWindow.setPosition(device.width / 2 - ~~(clickButtonWindow.getWidth() / 2), device.height * 0.65)
       })
