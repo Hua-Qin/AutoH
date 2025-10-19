@@ -21,6 +21,7 @@ import _events from './inline_modules/events'
 import _paddle from './inline_modules/paddle'
 import _plugins from './inline_modules/plugins'
 import _sensors from './inline_modules/sensors'
+import * as _web from './inline_modules/web'
 
 
 declare global {
@@ -45,6 +46,7 @@ declare global {
     var paddle: typeof _paddle
     var plugins: typeof _plugins
     var sensors: typeof _sensors
+    var web: typeof _web
 }
 
 
@@ -67,6 +69,7 @@ setGlobalAnd$('events', _events)
 setGlobalAnd$('paddle', _paddle)
 setGlobalAnd$('plugins', _plugins)
 setGlobalAnd$('sensors', _sensors)
+setGlobalAnd$('web', _web)
 
 setGlobal('$crypto', _$cypto)
 setGlobal('$zip', _$zip)

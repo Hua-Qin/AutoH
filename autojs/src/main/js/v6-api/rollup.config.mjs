@@ -5,8 +5,7 @@ import replace from '@rollup/plugin-replace'
 import json from '@rollup/plugin-json';
 import { babel } from '@rollup/plugin-babel';
 import terser from '@rollup/plugin-terser';
-import fs from 'fs'
-import path from 'node:path'
+import { parseInput } from './input.mjs';
 
 let isDev
 if (process.env.NODE_ENV === 'production') {
@@ -14,21 +13,10 @@ if (process.env.NODE_ENV === 'production') {
 } else {
     isDev = true
 }
-const dirs = fs.readdirSync('./src').filter((name) => {
-    if (name == 'inline_modules') {
-        return false
-    }
-    return fs.statSync(path.resolve("src", name)).isDirectory()
-})
 
-const input = Object.fromEntries(dirs.map(name => [
-    path.join(name, 'index'),
-    path.resolve("src", name, 'index.ts')
-]))
-input['init'] = "src/init.ts"
 
 export default {
-    input,
+    input: await parseInput(),
     output: {
         dir: "dist",
         format: 'commonjs',
@@ -40,6 +28,7 @@ export default {
         }),
         resolve(), commonjs(), json(),
         babel({
+            targets: { rhino: '1.8.0' },
             babelHelpers: 'bundled',
             extensions: ['.js', '.ts'],
             exclude: 'node_modules/**', // 排除 node_modules 目录

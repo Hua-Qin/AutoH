@@ -78,7 +78,7 @@ dependencies {
     api(project(path = ":LocalRepo:libtermexec"))
     api(project(path = ":LocalRepo:emulatorview"))
     api(project(path = ":LocalRepo:term"))
-    api(project(path = ":LocalRepo:p7zip"))
+    implementation("com.hzy:libp7zip:1.7.0")
     api(project(":paddleocr"))
     api(libs.mozilla.rhino)
     api(libs.mozilla.rhino.xml)
@@ -101,6 +101,9 @@ tasks.register<Exec>("buildV7Api") {
             from(File(v7ApiDir, "dist"))
             into(v7ModuleDir)
         }
+        delete(fileTree(v7ModuleDir) {
+            include("**/*.ts")
+        })
     }
 }
 
@@ -116,6 +119,9 @@ tasks.register<Exec>("buildV6Api") {
             from(File(v6ApiDir, "dist"))
             into(v6ModuleDir)
         }
+        delete(fileTree(v6ModuleDir) {
+            include("**/*.ts")
+        })
     }
 }
 

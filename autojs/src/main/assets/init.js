@@ -64,7 +64,7 @@ runtime.init();
     require("array-observe.min")();
     //初始化一般模块
     (function (scope) {
-        var modules = ['console', 'web', "RootAutomator"];
+        var modules = ['console', "RootAutomator"];
         var len = modules.length;
         for (var i = 0; i < len; i++) {
             var m = modules[i];
