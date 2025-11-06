@@ -44,7 +44,7 @@ function postMultipart(url: string, files?: any, options?: HttpOptions, callback
     o.method = "POST";
     o.contentType = "multipart/form-data";
     o.files = files;
-    return http.request(url, options, callback);
+    return http.request(url, o, callback);
 }
 
 

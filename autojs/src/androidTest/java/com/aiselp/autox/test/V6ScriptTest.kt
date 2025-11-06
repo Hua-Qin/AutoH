@@ -164,6 +164,19 @@ class V6ScriptTest {
         runScriptAssetSuccessfully("modules_import.js")
     }
 
+    @Test
+    fun http(){
+        val file = openScriptAsset(application, "utils/http_server.mjs")
+        val execute = getScriptEngineService().execute(ScriptFile(file.toFile()).toSource())
+        Thread.sleep(200)
+        try {
+            runScriptAssetSuccessfully("http.js", 5000)
+        }finally {
+            execute.engine.forceStop()
+            Thread.sleep(200)
+        }
+    }
+
     fun runScriptAssetSuccessfully(assetName: String, timeout: Long = 60 * 1000): Unit {
         val resultViewer = ScriptResultViewer()
         val execute =
