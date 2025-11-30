@@ -33,3 +33,5 @@ declare var getClip: () => string
 declare var currentPackage: () => string | null
 
 declare var currentActivity: () => string | null
+
+declare var random: (min?: number, max?: number) => number

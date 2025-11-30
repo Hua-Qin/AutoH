@@ -78,10 +78,11 @@ jobs:
           echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > .npmrc
           npm publish || true
         continue-on-error: true
-      - name: publish v7-modules
+      - name: publish v6-modules
         if: github.repository == 'aiselp/AutoX'
         run: |
           cd autojs/src/main/js/v6-api/dist
+          find ./ -name "*.js" -type f -delete
           echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > .npmrc
           npm publish || true
         continue-on-error: true
