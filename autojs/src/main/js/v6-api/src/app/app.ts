@@ -1,9 +1,11 @@
 import { asGlobal } from "@/utils";
+import { AppEmailOptions, AppIntentOptions, AppModule } from "./type";
+export * from "./type";
 
 const context = global.context;
 const Intent = android.content.Intent
 const rApp = runtime.app;
-const app = {
+const app: Partial<AppModule> = {
     intent, startActivity, sendBroadcast, startService, sendEmail, parseUri, getUriForFile,
     intentToShell, launch: runtime.app.launchPackage,
     versionCode: context.getPackageManager().getPackageInfo(context.getPackageName(), 0).versionCode as number,
@@ -16,25 +18,8 @@ const app = {
 
 
 
-export interface IntentOptions {
-    action?: string;
-    type?: string;
-    data?: string;
-    category?: string | string[];
-    packageName?: string;
-    extras?: { [key: string]: any };
-    flags?: string | string[] | number;
-    root?: boolean;
-    className?: string;
-}
-export interface EmailOptions {
-    email: string | string[];
-    cc?: string | string[];
-    bcc?: string | string[];
-    subject?: string;
-    text?: string;
-    attachment?: string;
-}
+type IntentOptions = AppIntentOptions
+type EmailOptions = AppEmailOptions
 function intent(i: IntentOptions): android.Intent {
     var intent = new android.content.Intent();
     if (i.className && i.packageName) {
@@ -74,7 +59,7 @@ function intent(i: IntentOptions): android.Intent {
     }
     if (i.type) {
         if (i.data) {
-            intent.setDataAndType(app.parseUri(i.data), i.type);
+            intent.setDataAndType(parseUri(i.data), i.type);
         } else {
             intent.setType(i.type);
         }
@@ -100,9 +85,9 @@ function startActivity(i: string | android.Intent | IntentOptions) {
     }
     const op = i as IntentOptions;
     if (op && op.root) {
-        shell("am start " + app.intentToShell(op), true);
+        shell("am start " + intentToShell(op), true);
     } else {
-        context.startActivity(app.intent(op).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+        context.startActivity(intent(op).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
     }
 
 }
@@ -110,22 +95,22 @@ function startActivity(i: string | android.Intent | IntentOptions) {
 function sendBroadcast(i: string | IntentOptions) {
     if (typeof (i) == "string") {
         if (runtime.getProperty("broadcast." + i)) {
-            rApp.sendLocalBroadcastSync(app.intent({ action: runtime.getProperty("broadcast." + i) }));
+            rApp.sendLocalBroadcastSync(intent({ action: runtime.getProperty("broadcast." + i) }));
         }
         return
     }
     if (i && i.root) {
-        shell("am broadcast " + app.intentToShell(i), true);
+        shell("am broadcast " + intentToShell(i), true);
     } else {
-        context.sendBroadcast(app.intent(i));
+        context.sendBroadcast(intent(i));
     }
 }
 
 function startService(i: IntentOptions) {
     if (i && i.root) {
-        shell("am startservice " + app.intentToShell(i), true);
+        shell("am startservice " + intentToShell(i), true);
     } else {
-        context.startService(app.intent(i));
+        context.startService(intent(i));
     }
 }
 
@@ -148,7 +133,7 @@ function sendEmail(options: EmailOptions) {
         i.putExtra(Intent.EXTRA_TEXT, options.text);
     }
     if (options.attachment) {
-        i.putExtra(Intent.EXTRA_STREAM, app.parseUri(options.attachment));
+        i.putExtra(Intent.EXTRA_STREAM, parseUri(options.attachment));
     }
     i.setType("message/rfc822");
     context.startActivity(Intent.createChooser(i, "发送邮件").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
@@ -167,7 +152,7 @@ function toArray(arg: string | string[]) {
 
 function parseUri(uri: string) {
     if (uri.startsWith("file://")) {
-        return app.getUriForFile(uri);
+        return getUriForFile(uri);
     }
     return android.net.Uri.parse(uri);
 }
@@ -279,14 +264,38 @@ function intentToShell(i: IntentOptions) {
     return cmd;
 }
 
-type App = (typeof app) & typeof rApp
+type App = AppModule
 Object.setPrototypeOf(app, runtime.app)
 declare global {
+    /**
+        * 通过应用包名启动应用。
+        * @param packageName 应用包名
+    */
     var launchPackage: App['launchPackage']
+    /**
+        * 通过应用包名启动应用。
+        * @param packageName 应用包名
+    */
     var launch: typeof launchPackage;
+    /**
+        * 通过应用名称启动应用。
+        * @param appName 应用名称
+    */
     var launchApp: typeof app.launch;
+    /**
+        * 获取应用名称对应的已安装的应用的包名。
+        * @param appName 应用名称
+    */
     var getPackageName: App['getPackageName'];
+    /**
+        * 获取应用包名对应的已安装的应用的名称。
+        * @param packageName 应用包名
+    */
     var getAppName: App['getAppName'];
+    /**
+        * 打开应用的详情页 (设置页)。
+        * @param packageName 应用包名
+    */
     var openAppSetting: App['openAppSetting'];
 }
 asGlobal(app, ['launchPackage', 'launch', 'launchApp', 'getPackageName', 'getAppName', 'openAppSetting']);
@@ -298,4 +307,4 @@ function parseIntentFlag(flag: string | number): number {
     return flag;
 }
 
-export default app;
+export default app as AppModule;

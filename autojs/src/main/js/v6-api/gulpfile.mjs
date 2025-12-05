@@ -17,17 +17,13 @@ async function copyTypeFile(cb) {
 
 async function createRootPackageFile(cb) {
     const n = JSON.parse(await fs.readFile('./package.json', 'utf8'))
-    const bin = {
-        "install-autox-types": "./srcipts/install-types.mjs"
-    }
-    // await copy('./srcipts', './dist/srcipts')
     const packageFile = {
         name: n.name,
         version: n.version,
         type: "commonjs",
-        bin,
         license: n.license,
         author: n.author,
+        publishConfig: n.publishConfig,
         dependencies: n.dependencies
     }
     await fs.writeFile('./dist/package.json', JSON.stringify(packageFile, undefined, 2))
