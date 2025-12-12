@@ -1,7 +1,7 @@
 
 import { createCallbackWrapper } from "@/utils";
 import { HttpOptions, K, Response } from "./types";
-import { startThread } from "@/therads";
+import { runOnIoThreadPool } from "@/therads/pool";
 
 const { Callback, Request, RequestBody, MediaType, FormBody, MultipartBody } = Packages["okhttp3"]
 var http = {
@@ -65,7 +65,7 @@ function request(url: string, options?: HttpOptions, callback?: K): Response | v
         return wrapResponse(call.execute());
     } else {
         const cb = createCallbackWrapper(callback);
-        startThread(function () {
+        runOnIoThreadPool(function () {
             let res
             try {
                 res = call.execute();

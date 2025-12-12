@@ -99,6 +99,8 @@ class V6ScriptTest {
         }
         assert(execute.engine.getGlobalProperty("a") == 4.0)
         assert(execute.engine.getGlobalProperty("b") == 6.0)
+        assert(execute.engine.getGlobalProperty("c") == 7.0)
+        assert(execute.engine.getGlobalProperty("d") == 99.0)
     }
 
     @Test

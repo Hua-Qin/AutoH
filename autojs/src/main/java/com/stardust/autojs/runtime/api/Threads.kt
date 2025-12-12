@@ -1,6 +1,7 @@
 package com.stardust.autojs.runtime.api
 
 import com.stardust.autojs.annotation.ScriptInterface
+import com.stardust.autojs.core.looper.Loopers
 import com.stardust.autojs.core.looper.MainThreadProxy
 import com.stardust.autojs.core.looper.TimerThread
 import com.stardust.autojs.runtime.ScriptRuntime
@@ -24,8 +25,10 @@ class Threads(private val mRuntime: ScriptRuntime) {
     private val mMainThreadProxy = MainThreadProxy(Thread.currentThread(), mRuntime)
     private var mSpawnCount = AtomicLong(0)
     private var mExit = false
-    private val coroutineScope = CoroutineScope(Dispatchers.Default + CoroutineName("AsyncThread"))
+    private val scope = CoroutineScope(Dispatchers.Default + CoroutineName("AsyncThread"))
     private val loopers by lazy { mRuntime.loopers }
+    private val taskCount = AtomicLong(0)
+    private val looperTask = Loopers.AsyncTask("AsyncTaskThreadPool")
 
     fun currentThread(): Any {
         val thread = Thread.currentThread()
@@ -34,9 +37,9 @@ class Threads(private val mRuntime: ScriptRuntime) {
 
     @ScriptInterface
     fun runTaskForThreadPool(runnable: BaseFunction) {
-        check(!mExit) { "script exiting" }
-        val task = loopers.createAndAddAsyncTask("runTaskForThreadPool")
-        coroutineScope.launch {
+        checkExit()
+        addTask()
+        scope.launch {
             try {
                 mRuntime.bridges.callFunction(runnable, null, emptyArray<Any>())
             } catch (e: Throwable) {
@@ -44,13 +47,49 @@ class Threads(private val mRuntime: ScriptRuntime) {
                     mRuntime.console.error("$this: ", e)
                 }
             } finally {
-                loopers.removeAsyncTask(task)
+                removeTask()
             }
         }
     }
 
     @ScriptInterface
+    fun _runTaskForIoThreadPool(runnable: Runnable) {
+        checkExit()
+        addTask()
+        scope.launch(Dispatchers.IO) {
+            try {
+                runnable.run()
+            } catch (e: Throwable) {
+                if (!ScriptInterruptedException.causedByInterrupted(e)) {
+                    mRuntime.console.error("$this: ", e)
+                }
+            } finally {
+                removeTask()
+            }
+        }
+    }
+
+    private fun addTask() {
+        val l = taskCount.addAndGet(1)
+        if (l == 1L) {
+            loopers.addAsyncTask(looperTask)
+        }
+    }
+
+    private fun removeTask() {
+        val l = taskCount.addAndGet(-1)
+        if (l == 0L) {
+            loopers.removeAsyncTask(looperTask)
+        }
+    }
+
+    private fun checkExit() {
+        check(!mExit) { "script exiting" }
+    }
+
+    @ScriptInterface
     fun start(runnable: Runnable): TimerThread {
+        checkExit()
         val thread = createThread(runnable)
         synchronized(mThreads) {
             check(!mExit) { "script exiting" }
@@ -83,7 +122,7 @@ class Threads(private val mRuntime: ScriptRuntime) {
     fun lock() = ReentrantLock()
 
     fun shutDownAll() {
-        coroutineScope.cancel("script exiting")
+        scope.cancel("script exiting")
         synchronized(mThreads) {
             for (thread in mThreads) {
                 thread.interrupt()

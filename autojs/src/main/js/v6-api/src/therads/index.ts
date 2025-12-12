@@ -1,25 +1,8 @@
-var threads = Object.create(runtime.threads) as Autox.Threads & {
-    runAsync<T>(fn: () => T): Promise<T>
-    runOnMainThread(fn: () => void): void
-}
+import * as pool from './pool'
 
-const main = threads.currentThread()
+var threads = Object.create(runtime.threads) as Autox.Threads & typeof pool;
 
-threads.runOnMainThread = function (fn: () => void) {
-    main.setImmediate(fn);
-}
-threads.runAsync = function <T>(fn: () => T): Promise<T> {
-    return new Promise(function (resolve, reject) {
-        runtime.threads.runTaskForThreadPool(function () {
-            try {
-                const result: T = fn();
-                resolve(result)
-            } catch (e) {
-                reject(e)
-            }
-        })
-    })
-}
+Object.assign(threads, pool);
 declare global {
     var sync: (func: unknown, lock: unknown) => any
 }
