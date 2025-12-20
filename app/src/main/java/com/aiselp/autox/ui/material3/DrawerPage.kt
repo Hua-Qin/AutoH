@@ -64,6 +64,7 @@ import com.aiselp.autox.ui.material3.components.DialogTitle
 import com.aiselp.autox.ui.material3.components.SettingOptionSwitch
 import com.aiselp.autox.ui.material3.components.UpdateDialog
 import com.aiselp.autox.ui.material3.components.Watch
+import com.github.aiselp.autox.debug.MemoryInformation
 import com.stardust.app.GlobalAppContext
 import com.stardust.app.isOpPermissionGranted
 import com.stardust.app.permission.DrawOverlaysPermission.launchCanDrawOverlaysSettings
@@ -137,6 +138,7 @@ fun DrawerPage() {
                 ConnectComputerSwitch()
                 USBDebugSwitch()
 
+                MemoryUsage()
                 SwitchTimedTaskScheduler()
                 ProjectAddress()
                 DownloadLink()
@@ -620,6 +622,17 @@ fun USBDebugSwitch() {
             }
         }
     )
+}
+
+@Composable
+fun MemoryUsage(){
+    val context = LocalContext.current
+    TextButton(onClick = {
+        val dialog = MemoryInformation.memoryInfoDialog(context)
+        dialog.show()
+    }) {
+        Text(text = stringResource(id = R.string.memory_usage))
+    }
 }
 
 @Composable

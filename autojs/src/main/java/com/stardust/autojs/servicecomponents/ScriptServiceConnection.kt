@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.ServiceConnection
 import android.os.Binder
 import android.os.Bundle
+import android.os.Debug
 import android.os.IBinder
 import android.util.Log
 import com.stardust.app.GlobalAppContext
@@ -106,6 +107,14 @@ class ScriptServiceConnection : ServiceConnection {
             }
         })
         send()
+    }
+
+    suspend fun getMemoryInfo(): Debug.MemoryInfo = sendBinder {
+        action = ScriptBinder.Action.GET_MEMORY_INFO.id
+        send()
+        reply!!.readException()
+        val memoryInfo = Debug.MemoryInfo.CREATOR.createFromParcel(reply)
+        return@sendBinder memoryInfo
     }
 
     suspend fun stopAllScript() = sendBinder {

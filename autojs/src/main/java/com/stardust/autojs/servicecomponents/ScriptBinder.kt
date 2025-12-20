@@ -1,9 +1,12 @@
 package com.stardust.autojs.servicecomponents
 
 import android.os.Binder
+import android.os.Build
 import android.os.Bundle
+import android.os.Debug
 import android.os.IBinder
 import android.os.Parcel
+import android.os.Parcelable
 import android.util.Log
 import com.stardust.app.service.AbstractAutoService.Companion.stopAllServices
 import com.stardust.autojs.AutoJs
@@ -37,6 +40,7 @@ class ScriptBinder(service: IndependentScriptService, val scope: CoroutineScope)
                 )
 
                 Action.BIND_SHIZUKU_SERVICE.id -> bindShizukuUserService()
+                Action.GET_MEMORY_INFO.id -> getMemoryInfo(reply!!)
                 else -> Log.w(TAG, "unknown action id = $code")
             }
             Log.d(TAG, "action id = $code, complete")
@@ -120,6 +124,14 @@ class ScriptBinder(service: IndependentScriptService, val scope: CoroutineScope)
         }
     }
 
+    private fun getMemoryInfo(reply: Parcel) {
+        reply.writeNoException()
+        val memoryInfo = Debug.MemoryInfo()
+        Debug.getMemoryInfo(memoryInfo)
+        Log.d(TAG, "memoryInfo: ${memoryInfo.totalPss / 1024}")
+        memoryInfo.writeToParcel(reply, Parcelable.PARCELABLE_WRITE_RETURN_VALUE)
+    }
+
     enum class Action(val id: Int) {
         START(1),
         STOP(2),
@@ -131,6 +143,7 @@ class ScriptBinder(service: IndependentScriptService, val scope: CoroutineScope)
         REGISTER_GLOBAL_CONSOLE_LISTENER(8),
         NOTIFICATION_LISTENER_SERVICE_STATUS(9),
         BIND_SHIZUKU_SERVICE(10),
+        GET_MEMORY_INFO(11),
         APP_EXIT(99);
     }
 
@@ -138,8 +151,15 @@ class ScriptBinder(service: IndependentScriptService, val scope: CoroutineScope)
         const val TAG = "ScriptBinder"
         const val DESCRIPTOR = "com.stardust.autojs.servicecomponents.ScriptBinder"
         suspend fun <T> connect(binder: IBinder, n: suspend TanBinder.() -> T): T {
-            val d = Parcel.obtain().apply { writeInterfaceToken(DESCRIPTOR) }
-            val r = Parcel.obtain()
+            val d = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                Parcel.obtain(binder)
+            } else Parcel.obtain()
+            d.writeInterfaceToken(DESCRIPTOR)
+            val r = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                Parcel.obtain(binder)
+            } else Parcel.obtain()
+            d.setDataSize(120)
+            r.setDataSize(120)
             try {
                 return TanBinder(binder, data = d, reply = r).n()
             } finally {
