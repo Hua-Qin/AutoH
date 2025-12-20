@@ -2,6 +2,21 @@
 autoxjs 整个项目的一些更新日志,双版本号为稳定版（内容以修复的bug为主），单版本号为激进版本、发布新内容。
 
 ## [Unreleased](https://github.com/kkevsekk1/AutoX/compare/7.0.5...HEAD) 未发布
+## [7.2.0] - 2025-12-20
+
+* 新增TermuxApi
+* http.postMultipart修复,添加测试
+* 更新rhino至1.8.1
+* JSON改为使用内置 #155
+* http模块优化
+  - 新增http.setTimeout函数
+* 新增一些线程池相关函数 
+  threads.runOnMainThread()
+  -threads.runOnThreadPool()
+  -threads.runOnIoThreadPool()
+  -threads.runAsync()
+* 新增images.matchTemplate与images.findImage的transparentMask选项 by [q1q2w3e4r5t6y7u](https://github.com/q1q2w3e4r5t6y7u)
+* 添加内存使用量展示
 
 ## [7.1.7] - 2025-10-19
 * 升级opencv到4.12.0
