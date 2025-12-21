@@ -2,6 +2,9 @@
 autoxjs 整个项目的一些更新日志,双版本号为稳定版（内容以修复的bug为主），单版本号为激进版本、发布新内容。
 
 ## [Unreleased](https://github.com/kkevsekk1/AutoX/compare/7.0.5...HEAD) 未发布
+## [7.2.1] - 2025-12-21
+修复一些问题
+
 ## [7.2.0] - 2025-12-20
 
 * 新增TermuxApi
