@@ -415,6 +415,13 @@ public class Device {
         return vh;
     }
 
+    /**
+     * 获取当前屏幕方向
+     * @return 1:竖屏  2:横屏
+     */
+    public int getRotation(){
+        return mContext.getResources().getConfiguration().orientation;
+    }
 
     @NonNull
     @Override
