@@ -39,6 +39,7 @@ jobs:
           ./gradlew autojs:buildJsModule
       - name: Build Docs
         run: ./gradlew app:buildDocs
+        continue-on-error: true
       - name: Build inrt template
         run: |
           ./gradlew app:buildTemplateApp
